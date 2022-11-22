@@ -59,7 +59,7 @@ jobs:
           name: "Run format-coverage"
           command: |
             cd lambdas/dummy/src
-            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.dummy.xml --add-prefix lambdas/dummy/src/ -d -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.dummy.json
+            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.xml --add-prefix lambdas/dummy/src/ -d -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.dummy.json
       - persist_to_workspace:
           root: .
           paths:
@@ -79,7 +79,7 @@ jobs:
           name: "Run format-coverage"
           command: |
             cd lambdas/rummy/src
-            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.rummy.xml --add-prefix lambdas/rummy/src/ -d -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.rummy.json
+            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.xml --add-prefix lambdas/rummy/src/ -d -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.rummy.json
       - persist_to_workspace:
           root: .
           paths:
@@ -102,7 +102,7 @@ jobs:
           name: "Run format-coverage"
           command: |
             cd stack
-            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.stack.xml --add-prefix stack/ -d -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.stack.json
+            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.xml --add-prefix stack/ -d -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.stack.json
       - persist_to_workspace:
           root: .
           paths:
