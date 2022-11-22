@@ -11,3 +11,7 @@ def prepare_message():
 
 def another_message():
     return {"body": "Hello again, CDK! You are in {}".format(os.environ["SETTINGS_MODULE"])}
+
+
+def stalking_message():
+    return {"body": "Hello once more, CDK! You are in {}".format(os.environ["SETTINGS_MODULE"])}
