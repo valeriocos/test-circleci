@@ -1,0 +1,127 @@
+version: 2.1
+
+orbs:
+  aws-cli: circleci/aws-cli@3.1.3
+  python: circleci/python@2.1.1
+
+
+commands:
+
+  unit-tests-dummy:
+    description: "Run unit-tests for dummy"
+    steps:
+      - run:
+          name: "Run tests"
+          command: make test-dummy
+      - run:
+          name: "Run format-coverage"
+          command: |
+            cd lambdas/dummy/src
+            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.xml -d --add-prefix lambdas/dummy/src --prefix /lambdas/dummy/src -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.dummy.json
+      - run:
+          name: "Clean up"
+          command: cd $CIRCLE_WORKING_DIRECTORY
+
+  unit-tests-stack:
+    description: "Run unit-tests for stack"
+    steps:
+      - run:
+          name: "Run tests"
+          command: make test-stack
+      - run:
+          name: "Run format-coverage"
+          command: |
+            cd stack
+            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.xml -d --add-prefix stack --prefix /stack -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.stack.json
+      - run:
+          name: "Clean up"
+          command: cd $CIRCLE_WORKING_DIRECTORY
+            
+
+jobs:
+  build:
+    machine:
+      image: ubuntu-2204:current
+      docker_layer_caching: true
+
+    steps:
+      - checkout
+      - aws-cli/setup
+      - configure-token-profile
+      - run:
+          name: "Setup Code Climate test-reporter"
+          command: |
+            curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+            chmod +x ./cc-test-reporter
+            ./cc-test-reporter before-build
+      - run:
+          name: "Create coverage folder"
+          command: mkdir coverage
+      - run:
+          name: "Install lambda deps"
+          command: make install-deps
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  upload-coverage:
+    docker:
+      - image: cimg/python:3.8-node
+
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: "Upload coverage results to Code Climate"
+          command: |
+            ./cc-test-reporter sum-coverage coverage/coverage.*.json -p $(ls coverage/ | wc -l) -o coverage/codeclimate.combined.json
+            ./cc-test-reporter upload-coverage -i coverage/codeclimate.combined.json -d
+
+  unit-tests:
+    machine:
+      image: ubuntu-2204:current
+
+    steps:
+      - attach_workspace:
+          at: .
+      - unit-tests-dummy
+      - persist_to_workspace:
+          root: .
+          paths:
+            - coverage
+
+  stack-tests:
+    machine:
+      image: ubuntu-2204:current
+
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: "Install stack deps for tests"
+          command: pip3 install -r requirements-dev.txt
+      - unit-tests-stack
+      - persist_to_workspace:
+          root: .
+          paths:
+            - coverage
+
+workflows:
+  version: 2
+
+  pull-request:
+    jobs:
+      - build:
+          context:
+            - "Prod AWS"
+      - unit-tests:
+          requires:
+            - build
+      - stack-tests:
+          requires:
+            - build
+      - upload-coverage:
+          requires:
+            - unit-tests
+            - stack-tests
