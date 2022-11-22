@@ -1,5 +1,4 @@
 from aws_cdk import Stack, Tags
-from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda
 from constructs import Construct
@@ -7,7 +6,7 @@ from constructs import Construct
 
 EXCLUDED_PATTERNS = [".venv", "__pycache__", "Dockerfile", ".dockerignore", "tests"]
 DUMMY_FUNCTION_TAG = "DUMMY"
-
+RUMMY_FUNCTION_TAG = "RUMMY"
 
 
 class AStack(Stack):
@@ -17,12 +16,25 @@ class AStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
         self.env_name = env_name
 
-        self.create_dummy_lambda(env_name)
+        self.create_lambda(
+            env_name,
+            role_name="DummyLambdaRole",
+            lambda_name="DummyLambda",
+            asset_path="./lambdas/dummy",
+            lambda_tag=DUMMY_FUNCTION_TAG
+        )
+        self.create_lambda(
+            env_name,
+            role_name="RummyLambdaRole",
+            lambda_name="RummyLambda",
+            asset_path="./lambdas/rummy",
+            lambda_tag=RUMMY_FUNCTION_TAG
+        )
 
-    def create_dummy_lambda(self, env_name: str) -> aws_lambda.Function:
+    def create_lambda(self, env_name: str, role_name: str, lambda_name: str, asset_path: str, lambda_tag: str) -> aws_lambda.Function:
         dummy_role = iam.Role(
             self,
-            "DummyLambdaRole",
+            role_name,
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             inline_policies={
                 "network_interfaces": iam.PolicyDocument(
@@ -49,10 +61,10 @@ class AStack(Stack):
 
         dummy_lambda_fn = aws_lambda.Function(
             self,
-            "DummyLambda",
+            lambda_name,
             runtime=aws_lambda.Runtime.PYTHON_3_8,
             code=aws_lambda.Code.from_asset(
-                "./lambdas/dummy", exclude=EXCLUDED_PATTERNS
+                asset_path, exclude=EXCLUDED_PATTERNS
             ),
             role=dummy_role,
             handler="src.app.handler",
@@ -61,6 +73,6 @@ class AStack(Stack):
             },
         )
 
-        Tags.of(dummy_lambda_fn).add("Function", DUMMY_FUNCTION_TAG)
+        Tags.of(dummy_lambda_fn).add("Function", lambda_tag)
 
         return dummy_lambda_fn

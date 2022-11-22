@@ -6,9 +6,11 @@ services:
     build:
       context: lambdas/dummy
     volumes:
-      - ./coverage:/coverage
       - ./lambdas/dummy/src/coverage:/app/src/coverage
 
-secrets:
-  codeartifact-auth-token:
-    file: .codeartifact_token
+  rummy:
+    platform: linux/amd64
+    build:
+      context: lambdas/rummy
+    volumes:
+      - ./lambdas/rummy/src/coverage:/app/src/coverage

@@ -1,41 +1,7 @@
 version: 2.1
 
 orbs:
-  aws-cli: circleci/aws-cli@3.1.3
   python: circleci/python@2.1.1
-
-
-commands:
-
-  unit-tests-dummy:
-    description: "Run unit-tests for dummy"
-    steps:
-      - run:
-          name: "Run tests"
-          command: make test-dummy
-      - run:
-          name: "Run format-coverage"
-          command: |
-            cd lambdas/dummy/src
-            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.xml -d --add-prefix lambdas/dummy/src --prefix /lambdas/dummy/src -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.dummy.json
-      - run:
-          name: "Clean up"
-          command: cd $CIRCLE_WORKING_DIRECTORY
-
-  unit-tests-stack:
-    description: "Run unit-tests for stack"
-    steps:
-      - run:
-          name: "Run tests"
-          command: make test-stack
-      - run:
-          name: "Run format-coverage"
-          command: |
-            cd stack
-            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.xml -d --add-prefix stack --prefix /stack -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.stack.json
-      - run:
-          name: "Clean up"
-          command: cd $CIRCLE_WORKING_DIRECTORY
             
 
 jobs:
@@ -46,8 +12,6 @@ jobs:
 
     steps:
       - checkout
-      - aws-cli/setup
-      - configure-token-profile
       - run:
           name: "Setup Code Climate test-reporter"
           command: |
@@ -65,7 +29,7 @@ jobs:
           paths:
             - .
 
-  upload-coverage:
+  upload-coverage-codeclimate:
     docker:
       - image: cimg/python:3.8-node
 
@@ -73,25 +37,70 @@ jobs:
       - attach_workspace:
           at: .
       - run:
+          name: "list files"
+          command: ls coverage/
+      - run:
+          name: "x"
+          command: cat coverage/coverage.dummy.json
+      - run:
+          name: "y"
+          command: cat coverage/coverage.rummy.json
+      - run:
+          name: "z"
+          command: cat coverage/coverage.stack.json
+      - run:
+          name: "Combine coverage results"
+          command: |
+            ./cc-test-reporter sum-coverage coverage/coverage.*.json -p 3 -o coverage/codeclimate.combined.json
+      - run:
+          name: "w"
+          command: cat coverage/codeclimate.combined.json
+      - run:
           name: "Upload coverage results to Code Climate"
           command: |
-            ./cc-test-reporter sum-coverage coverage/coverage.*.json -p $(ls coverage/ | wc -l) -o coverage/codeclimate.combined.json
             ./cc-test-reporter upload-coverage -i coverage/codeclimate.combined.json -d
 
-  unit-tests:
+  unit-tests-dummy:
     machine:
       image: ubuntu-2204:current
 
     steps:
       - attach_workspace:
           at: .
-      - unit-tests-dummy
+      - run:
+          name: "Run tests for dummy"
+          command: make test-dummy
+      - run:
+          name: "Run format-coverage"
+          command: |
+            cd lambdas/dummy/src
+            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.dummy.xml -d -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.dummy.json
       - persist_to_workspace:
           root: .
           paths:
             - coverage
 
-  stack-tests:
+  unit-tests-rummy:
+    machine:
+      image: ubuntu-2204:current
+
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: "Run tests for rummy"
+          command: make test-rummy
+      - run:
+          name: "Run format-coverage"
+          command: |
+            cd lambdas/rummy/src
+            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.rummy.xml -d -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.rummy.json
+      - persist_to_workspace:
+          root: .
+          paths:
+            - coverage
+
+  unit-tests-stack:
     machine:
       image: ubuntu-2204:current
 
@@ -101,7 +110,14 @@ jobs:
       - run:
           name: "Install stack deps for tests"
           command: pip3 install -r requirements-dev.txt
-      - unit-tests-stack
+      - run:
+          name: "Run tests"
+          command: make test-stack
+      - run:
+          name: "Run format-coverage"
+          command: |
+            cd stack
+            $CIRCLE_WORKING_DIRECTORY/cc-test-reporter format-coverage -t coverage.py coverage/coverage.stack.xml -d -o $CIRCLE_WORKING_DIRECTORY/coverage/coverage.stack.json
       - persist_to_workspace:
           root: .
           paths:
@@ -115,13 +131,17 @@ workflows:
       - build:
           context:
             - "Prod AWS"
-      - unit-tests:
+      - unit-tests-rummy:
           requires:
             - build
-      - stack-tests:
+      - unit-tests-dummy:
           requires:
             - build
-      - upload-coverage:
+      - unit-tests-stack:
           requires:
-            - unit-tests
-            - stack-tests
+            - build
+      - upload-coverage-codeclimate:
+          requires:
+            - unit-tests-rummy
+            - unit-tests-dummy
+            - unit-tests-stack

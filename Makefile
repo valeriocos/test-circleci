@@ -1,4 +1,4 @@
-.PHONY: synth colima-start build build-dummy build-list-user-instruments test-dummy test-list-user-instruments test-stack install-deps refresh-codeartifact-token
+.PHONY: synth colima-start build build-dummy build-rummy test-dummy test-rummy test-stack install-deps
 
 A_STACK_NAME = AStack
 synth:
@@ -7,14 +7,19 @@ synth:
 colima-start:
 	colima start --runtime docker --mount $(HOME):w --mount /tmp/colima:w
 
-
 build-dummy:
 	docker-compose build dummy
 
-build: build-dummy
+build-rummy:
+	docker-compose build rummy
+
+build: build-dummy build-rummy
 
 test-dummy:
 	docker-compose run --rm dummy pytest
+
+test-rummy:
+	docker-compose run --rm rummy pytest
 
 test-stack:
 	pytest -vs tests
